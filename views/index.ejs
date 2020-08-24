@@ -1,0 +1,114 @@
+<html lang="en">
+<%- include('header') %>
+
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-9">
+                <input type="text" class="form-control form-control-lg" id="search_keyword" placeholder="Search by country name"  required>
+            </div>
+            <div class="col-1">
+                <button type="button" class="btn btn-outline-primary btn-lg" onclick="search()" id="btnSearch">Search</button>
+            </div>
+            <div class="col-2">
+                <img src="img/loading.gif" width="50" style="display: none;" id="loading">
+            </div>
+        </div>
+        <div class="row mt-3">
+            <!-- <div class="col-2">Followers_count</div> -->
+            <div class="col-3">
+                <select class="form-control" id="filter_type">
+                    <option value="0" selected>Select</option>
+                    <option value="1">Followers count</option>
+                </select>
+            </div>
+            <p>from</p>
+            <div class="col-2">
+                <input type="number" class="form-control" id="followers_count_from">
+            </div>
+            <p>to</p>
+            <div class="col-2">
+                <input type="number" class="form-control" id="followers_count_to">
+            </div>
+            <div class="col-1"><i style="color:#4aa2ff; font-size:30px; margin-left: -20px; margin-top:5px" class="fas fa-filter"></i></div>
+             
+        </div>
+        <div class="row mt-3">
+            <div class="col-3">
+            <select class="form-control" >
+                <!-- <option value="0" >Select</option> -->
+                <option value="2" selected>Location</option>
+            </select>
+            </div>
+            <div class="col-6">
+                <input type="text" class="form-control" id="searchKeyWord_location" placeholder="Search by city name">
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid center mt-5 mb-5 p-3" >
+        <table style="background-color:#ddebff" class="table" id="tableData"></table>
+    </div>
+</body>
+<script>
+    $(document).ready(function() {
+        $('#tableData').DataTable( {
+            columns: [
+                { title: "ID" , data: "id_str"},
+                { title: "screen_name" , data: "screen_name",
+                    visible: false
+                },
+                { title: "Name", data: "name" ,
+                  render: function (data, type, row, meta) { 
+                    return '<a target="_blank" href="https://twitter.com/' +row["screen_name"] + ' ">'+data+'</a>'; }},
+                { title: "Description", data: "description" },
+                { title: "Location", data: "location"},
+                { title: "Followers", data: "followers_count" },
+                { title: "Friends", data: "friends_count", },
+            ],
+        });
+    });
+    async function search() {
+        const searchKeyWord = $("#search_keyword").val();
+        const searchKeyWordLocation = $("#searchKeyWord_location").val();
+        var table = $("#table-container");
+        var country = $("#select-country").val();
+        var DataTable = $('#tableData').DataTable();
+        DataTable.clear().draw();
+        let pageNum = 1;
+
+        $("#loading").show();
+        $("#btnSearch").prop("disabled", true);
+        var list = [];
+        const filterType = parseInt($("#filter_type").val(), 10);
+        const followersCountFrom = parseInt($('#followers_count_from').val(), 10);
+        const followersCountTo = parseInt($('#followers_count_to').val(), 10);
+        while(true) {
+            try {
+                response = await axios.post('/search', {page: pageNum, key: {type: searchKeyWord , value: searchKeyWordLocation }, filter: {type: filterType, value: [followersCountFrom,followersCountTo]}});
+                console.log(response);
+                items = response.data;
+                list = list.concat(items);
+
+                items.forEach(element => {
+                    DataTable.row.add({
+                        "id_str": element["id_str"],
+                        "screen_name":  element["screen_name"],
+                        "name": element["name"],
+                        "description": element["description"],
+                        "location": element["location"],
+                        "followers_count": element["followers_count"],
+                        "friends_count": element["friends_count"]
+                    }).draw();
+                    if(DataTable.data().count() + 1  >= 500) return;
+                });
+                if(DataTable.data().count() >= 500 || pageNum >= 1000) break;
+                pageNum++;
+            } catch (error) {
+                break;
+            }
+        }
+        $("#loading").hide();
+        $("#btnSearch").prop("disabled", false);
+    }
+</script>
+</html>
